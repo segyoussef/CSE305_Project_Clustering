@@ -1,6 +1,15 @@
 // sequential implementation of Boruvka's algorithm for the Euclidean MST
 //
-// ref: Rajasekaran (2005), Sec. 3.2 (Sollin's algorithm)
+// ref: Rajasekaran (2005), Sec. 3.2 "An AROB Algorithm"
+//   "We adapt Sollin's algorithm... There are O(log n) phases in Sollin's
+//   algorithm. The algorithm has a forest of trees at any time... Phase s
+//   of the algorithm runs as follows: For each tree T in F_s, determine
+//   the edge e_T with the minimum weight that connects a node in T to a
+//   node outside T. Add these edges to the forest F_s to obtain F_{s+1}."
+//
+// We adapt this to shared-memory CPU (rather than the AROB model) using
+// std::thread (parallel version in boruvka_parallel.cpp).
+
 // we compute distances on the complete graph implicitly: for every pair (i,j)
 // the edge weight is the Euclidean distance between points[i] and points[j]
 
