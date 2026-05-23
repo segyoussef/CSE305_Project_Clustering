@@ -4,7 +4,9 @@
 // For now, this just prints the MST. We'll add dendrogram output in the next step.
 
 #include "boruvka_sequential.h"
+#include "mst_to_dendrogram.h"
 #include "common/dataset_loader.h"
+#include "common/dendrogram.h"
 
 #include <chrono>
 #include <iostream>
@@ -21,16 +23,21 @@ int main(int argc, char** argv) {
 
     auto t0 = std::chrono::steady_clock::now();
     std::vector<MSTEdge> mst = boruvka_mst_sequential(points);
+    Dendrogram dendro = mst_to_dendrogram(mst, static_cast<int>(points.size()));
     auto t1 = std::chrono::steady_clock::now();
 
     double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
     std::cerr << "runtime_ms: " << ms << "\n";
 
     // For now, print MST edges to stdout.
-    std::cout << "u,v,weight\n";
-    std::cout << std::setprecision(10);
-    for (const auto& e : mst) {
-        std::cout << e.u << "," << e.v << "," << e.weight << "\n";
-    }
+    //std::cout << "u,v,weight\n";
+    //std::cout << std::setprecision(10);
+    //for (const auto& e : mst) {
+    //    std::cout << e.u << "," << e.v << "," << e.weight << "\n";
+    //}
+
+    // write dendogram (after mst --> dendogram conversion)
+    write_dendrogram(std::cout, dendro);
+
     return 0;
 }

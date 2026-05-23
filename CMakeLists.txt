@@ -11,7 +11,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall -Wextra -pthread")
      src/mst/main.cpp
      src/mst/boruvka_sequential.cpp
      src/mst/union_find.cpp
-#     src/mst/mst_to_dendrogram.cpp
+     src/mst/mst_to_dendrogram.cpp
      src/common/distance.cpp
      src/common/dataset_loader.cpp
      src/common/dendrogram.cpp
