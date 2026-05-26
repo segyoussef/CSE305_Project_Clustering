@@ -28,10 +28,9 @@ add_executable(hc_matrix_cpu
      src/common/distance.cpp
      src/common/dataset_loader.cpp
      src/common/dendrogram.cpp
+     src/matrix_cpu/matrix_hc_parallel.cpp
  )
 target_include_directories(hc_matrix_cpu PRIVATE src)
-
-#src/matrix_cpu/matrix_hc_parallel.cpp  // To include later
 
 # Standalone tests
 add_executable(test_union_find tests/test_union_find.cpp src/mst/union_find.cpp)
