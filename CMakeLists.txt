@@ -21,16 +21,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall -Wextra -pthread")
 
 # Kamil's matrix CPU executable
 # TODO: uncomment as source files are added
-# add_executable(hc_matrix_cpu
-#     src/matrix_cpu/main.cpp
-#     src/matrix_cpu/matrix_hc_sequential.cpp
-#     src/matrix_cpu/matrix_hc_parallel.cpp
-#     src/matrix_cpu/lance_williams.cpp
-#     src/common/distance.cpp
-#     src/common/dataset_loader.cpp
-#     src/common/dendrogram.cpp
-# )
-# target_include_directories(hc_matrix_cpu PRIVATE src)
+add_executable(hc_matrix_cpu
+     src/matrix_cpu/main.cpp
+     src/matrix_cpu/matrix_hc_sequential.cpp
+     src/matrix_cpu/lance_williams.cpp
+     src/common/distance.cpp
+     src/common/dataset_loader.cpp
+     src/common/dendrogram.cpp
+ )
+target_include_directories(hc_matrix_cpu PRIVATE src)
+
+#src/matrix_cpu/matrix_hc_parallel.cpp  // To include later
 
 # Standalone tests
 add_executable(test_union_find tests/test_union_find.cpp src/mst/union_find.cpp)
