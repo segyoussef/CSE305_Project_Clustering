@@ -11,7 +11,10 @@ std::vector<Point> load_dataset(const std::string& path, std::vector<int>* label
 
     std::vector<Point> points;
     std::string line;
+
+    // Read header and check if there is a label column
     std::getline(file, line); 
+    bool has_label = (line.find("label") != std::string::npos);
 
     while (std::getline(file, line)) {
         std::stringstream ss(line);
@@ -21,7 +24,7 @@ std::vector<Point> load_dataset(const std::string& path, std::vector<int>* label
         while (std::getline(ss, token, ','))
             coords.push_back(std::stod(token));
 
-        if (labels != nullptr) {
+        if (has_label && labels != nullptr) {
             int label = (int)coords.back();
             coords.pop_back();
             labels->push_back(label);
