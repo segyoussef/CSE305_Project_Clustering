@@ -45,7 +45,7 @@ target_include_directories(hc_matrix_cpu PRIVATE src)
 #    src/common/dendrogram.cpp
 #    src/common/distance.cpp
 #)
-target_include_directories(hc_matrix_cuda PRIVATE src)
+#target_include_directories(hc_matrix_cuda PRIVATE src)
 
 # Standalone tests
 add_executable(test_union_find tests/test_union_find.cpp src/mst/union_find.cpp)
