@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-project(CSE305_HC LANGUAGES CXX)
+project(CSE305_HC LANGUAGES CXX CUDA)
+
+# RTX 3090 and RTX A5000 (in the cs rooms) are both ampere sm_86
+set(CMAKE_CUDA_ARCHITECTURES 86)
+set(CMAKE_CUDA_STANDARD 17)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
