@@ -1,28 +1,45 @@
 // CLI entry point for the MST-based single-link clustering executable.
-// Usage: ./hc_mst_cpu <dataset.csv>
+// Usage: ./hc_mst_cpu <dataset.csv> [--threads N]
 //
 // For now, this just prints the MST. We'll add dendrogram output in the next step.
 
 #include "boruvka_sequential.h"
+#include "boruvka_parallel.h"
 #include "mst_to_dendrogram.h"
 #include "common/dataset_loader.h"
 #include "common/dendrogram.h"
 
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <dataset.csv>\n";
+        std::cerr << "Usage: " << argv[0] << " <dataset.csv> [--threads N]\n";
         return 1;
     }
 
+    std::string dataset_path = argv[1];
+    int num_threads = 1;  // default to sequential
+
+    for (int i = 2; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
+            num_threads = std::stoi(argv[++i]);
+        }
+    }
+
     std::vector<Point> points = load_dataset(argv[1]);
-    std::cerr << "Loaded " << points.size() << " points.\n";
+    std::cerr << "Loaded " << points.size() << " points. threads=" << num_threads << "\n";
 
     auto t0 = std::chrono::steady_clock::now();
-    std::vector<MSTEdge> mst = boruvka_mst_sequential(points);
+    std::vector<MSTEdge> mst;
+    if (num_threads <= 1) {
+        mst = boruvka_mst_sequential(points);
+    } else {
+        mst = boruvka_mst_parallel(points, num_threads);
+    }
     Dendrogram dendro = mst_to_dendrogram(mst, static_cast<int>(points.size()));
     auto t1 = std::chrono::steady_clock::now();
 

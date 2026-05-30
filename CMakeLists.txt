@@ -1,9 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
 project(CSE305_HC LANGUAGES CXX CUDA)
 
+# Try to enable CUDA if a toolkit is available. If not, skip CUDA targets. ( - Allegra, ran into some issues with this, so added option to skip CUDA targets for now.)
 # RTX 3090 and RTX A5000 (in the cs rooms) are both ampere sm_86
-set(CMAKE_CUDA_ARCHITECTURES 86)
-set(CMAKE_CUDA_STANDARD 17)
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_ARCHITECTURES 86)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(HAS_CUDA TRUE)
+else()
+    message(STATUS "CUDA not found, skipping CUDA targets")
+    set(HAS_CUDA FALSE)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +24,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall -Wextra -pthread")
  add_executable(hc_mst_cpu
      src/mst/main.cpp
      src/mst/boruvka_sequential.cpp
+     src/mst/boruvka_parallel.cpp
      src/mst/union_find.cpp
      src/mst/mst_to_dendrogram.cpp
      src/common/distance.cpp
@@ -37,6 +48,7 @@ add_executable(hc_matrix_cpu
 target_include_directories(hc_matrix_cpu PRIVATE src)
 
 # Youssef's matrix CUDA executable
+if(HAS_CUDA)
 add_executable(hc_matrix_cuda
     src/matrix_cuda/main.cpp
     src/matrix_cuda/matrix_hc_cuda.cu
@@ -46,6 +58,7 @@ add_executable(hc_matrix_cuda
     src/common/distance.cpp
 )
 target_include_directories(hc_matrix_cuda PRIVATE src)
+endif()
 
 # Standalone tests
 add_executable(test_union_find tests/test_union_find.cpp src/mst/union_find.cpp)
