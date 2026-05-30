@@ -23,15 +23,24 @@ int main(int argc, char** argv) {
 
     std::string dataset_path = argv[1];
     int num_threads = 1;  // default to sequential
+    bool has_labels = false;
 
     for (int i = 2; i < argc; ++i) {
         if (std::strcmp(argv[i], "--threads") == 0 && i + 1 < argc) {
             num_threads = std::stoi(argv[++i]);
+        } else if (std::strcmp(argv[i], "--has-labels") == 0) {
+            has_labels = true;
         }
     }
 
-    std::vector<Point> points = load_dataset(argv[1]);
-    std::cerr << "Loaded " << points.size() << " points. threads=" << num_threads << "\n";
+    std::vector<int> labels;
+    std::vector<Point> points = load_dataset(
+        dataset_path,
+        has_labels ? &labels : nullptr
+    );
+    std::cerr << "Loaded " << points.size() << " points (d="
+              << (points.empty() ? 0 : points[0].coords.size())
+              << "). threads=" << num_threads << "\n";
 
     auto t0 = std::chrono::steady_clock::now();
     std::vector<MSTEdge> mst;

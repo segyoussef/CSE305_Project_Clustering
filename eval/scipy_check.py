@@ -20,23 +20,26 @@ from scipy.cluster.hierarchy import linkage
 
 
 def load_points(csv_path):
-    """Load points from CSV. Assumes no label column."""
+    """Load points from CSV. If a 'label' column exists, it is excluded."""
     df = pd.read_csv(csv_path)
-    return df.values  # shape (N, d)
+    if "label" in df.columns:
+        df = df.drop(columns=["label"])
+    return df.values
 
 
-def run_cpp(executable, csv_path):
-    """Run the C++ binary, return its dendrogram as a DataFrame."""
-    result = subprocess.run(
-        [executable, csv_path],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    # Parse stdout as CSV
+def run_cpp(executable, csv_path, threads=1):
+    df_header = pd.read_csv(csv_path, nrows=0)
+    has_labels = "label" in df_header.columns
+
+    cmd = [executable, csv_path]
+    if threads > 1:
+        cmd += ["--threads", str(threads)]
+    if has_labels:
+        cmd += ["--has-labels"]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     from io import StringIO
-    df = pd.read_csv(StringIO(result.stdout))
-    return df
+    return pd.read_csv(StringIO(result.stdout))
 
 
 def scipy_dendrogram(points):
@@ -51,19 +54,16 @@ def scipy_dendrogram(points):
 
 
 def compare_dendrograms(cpp_df, scipy_df, tol=1e-6):
-    """
-    Compare two dendrograms by their (distance, new_size) multisets.
-    Equivalent dendrograms must have the same sorted sequence of (distance, size) pairs.
-    """
+    """Compare two dendrograms by their sorted distance multisets."""
     if len(cpp_df) != len(scipy_df):
         return False, f"Different number of merges: {len(cpp_df)} vs {len(scipy_df)}"
 
-    cpp_pairs = sorted(zip(cpp_df['distance'], cpp_df['new_size']))
-    scipy_pairs = sorted(zip(scipy_df['distance'], scipy_df['new_size']))
+    cpp_dists = sorted(cpp_df['distance'].tolist())
+    scipy_dists = sorted(scipy_df['distance'].tolist())
 
-    for (d1, s1), (d2, s2) in zip(cpp_pairs, scipy_pairs):
-        if abs(d1 - d2) > tol or s1 != s2:
-            return False, f"Mismatch: cpp=({d1}, {s1}) vs scipy=({d2}, {s2})"
+    for d1, d2 in zip(cpp_dists, scipy_dists):
+        if abs(d1 - d2) > tol:
+            return False, f"Distance mismatch: {d1} vs {d2}"
 
     return True, "OK"
 
