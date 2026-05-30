@@ -40,7 +40,7 @@ target_include_directories(hc_matrix_cpu PRIVATE src)
 #add_executable(hc_matrix_cuda
 #    src/matrix_cuda/main.cpp
 #    src/matrix_cuda/matrix_hc_cuda.cu
-#    src/matrix_cuda/kernels.cu
+    src/matrix_cuda/kernels.cu
 #    src/common/dataset_loader.cpp
 #    src/common/dendrogram.cpp
 #    src/common/distance.cpp
