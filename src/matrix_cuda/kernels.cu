@@ -27,7 +27,7 @@ __global__ static void compute_distances_kernel(const double* __restrict__ d_coo
 //1-D grid with a grid-stride loop + shared-memory tree reduction.
 //each block write one MinResult to partial[blockIdx.x]
 __global__ static void find_min_kernel(const double* __restrict__ dist,const uint8_t* __restrict__ active, int n, MinResult* __restrict__ partial){
-    __shared__ MinResult smem[256];
+    extern __shared__ MinResult smem[];
     int tid = threadIdx.x;
     long long total = (long long)n * n;
 
@@ -96,9 +96,9 @@ __global__ static void lance_williams_update_kernel(double* __restrict__ dist,co
 // then host-side helpers
 
 
-int compute_find_min_blocks(int n) {
+int compute_find_min_blocks(int n, int block_size) {
     long long total = (long long)n * n;
-    int blocks = (int)((total + 255) / 256);
+    int blocks = (int)((total + block_size - 1) / block_size);
     return blocks < 1024 ? blocks : 1024;
 }
 
@@ -108,8 +108,9 @@ void launch_compute_distances(const double* d_coords, double* d_dist, int n, int
     compute_distances_kernel<<<grid, block>>>(d_coords, d_dist, n, dim);
 }
 
-void launch_find_min(const double* d_dist, const uint8_t* d_active, int n, MinResult* d_partial, int num_blocks){
-    find_min_kernel<<<num_blocks, 256>>>(d_dist, d_active, n, d_partial);
+void launch_find_min(const double* d_dist, const uint8_t* d_active, int n, MinResult* d_partial, int num_blocks, int block_size){
+    size_t smem_bytes = block_size * sizeof(MinResult);
+    find_min_kernel<<<num_blocks, block_size, smem_bytes>>>(d_dist, d_active, n, d_partial);
 }
 
 void launch_lance_williams_update(double* d_dist, const uint8_t* d_active,const int* d_size, int n, int a, int b, int linkage_int){

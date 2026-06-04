@@ -5,7 +5,7 @@
 #include <limits>
 #include <vector>
 
-Dendrogram matrix_hc_cuda(const std::vector<Point>& points, Linkage linkage) {
+Dendrogram matrix_hc_cuda(const std::vector<Point>& points, Linkage linkage, int block_size) {
     int n   = (int)points.size();
     int dim = (n > 0) ? (int)points[0].coords.size() : 0;
 
@@ -31,7 +31,7 @@ Dendrogram matrix_hc_cuda(const std::vector<Point>& points, Linkage linkage) {
 
     launch_compute_distances(d_coords, d_dist, n, dim);
 
-    int num_blocks = compute_find_min_blocks(n);
+    int num_blocks = compute_find_min_blocks(n, block_size);
     MinResult *d_partial;
     cudaMalloc(&d_partial, num_blocks * sizeof(MinResult));
     std::vector<MinResult> h_partial(num_blocks);
@@ -43,7 +43,7 @@ Dendrogram matrix_hc_cuda(const std::vector<Point>& points, Linkage linkage) {
 
     for (int step = 0; step < n - 1; step++) {
 
-        launch_find_min(d_dist, d_active, n, d_partial, num_blocks);
+        launch_find_min(d_dist, d_active, n, d_partial, num_blocks, block_size);
         cudaMemcpy(h_partial.data(), d_partial, num_blocks * sizeof(MinResult), cudaMemcpyDeviceToHost);
 
         MinResult global;
