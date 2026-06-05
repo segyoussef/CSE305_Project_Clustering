@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 #include <limits>
+#include <condition_variable>
+#include <mutex>
 
 namespace {
 
@@ -28,19 +30,25 @@ struct CheapestEdge {
     bool valid;
 };
 
-// worker: scans pairs (i, j) where i is in [i_start, i_end), j > i.
+CheapestEdge empty_cheapest_edge() {
+    return {NO_EDGE, {}, false};
+}
+
+// scans pairs (i, j) where i is in [i_start, i_end), j > i.
 // for each pair in different components, updates this worker's local
-// cheapest_edge[root] map (encoded as a vector indexed by vertex)
-void scan_worker(int i_start,
+// cheapest_edge[root] map.
+// The component_roots vector is a per-phase snapshot, so workers do not call
+// UnionFind::find() concurrently.
+void scan_range(int i_start,
                  int i_end,
                  int n,
                  const std::vector<Point>& points,
-                 UnionFind& uf,
+                 const std::vector<int>& component_roots,
                  std::vector<CheapestEdge>& local_cheapest) {
     for (int i = i_start; i < i_end; ++i) {
-        int ri = uf.find(i);
+        int ri = component_roots[i];
         for (int j = i + 1; j < n; ++j) {
-            int rj = uf.find(j);
+            int rj = component_roots[j];
             if (ri == rj) continue;
 
             MSTEdge e{i, j, euclidean(points[i], points[j])};
@@ -72,27 +80,72 @@ std::vector<MSTEdge> boruvka_mst_parallel(const std::vector<Point>& points,
 
     UnionFind uf(n);
 
-    while (uf.num_components() > 1) {
-        // each thread gets its own cheapest_edge array, indexed by vertex.
-        // only entries at union-find roots are meaningful
-        std::vector<std::vector<CheapestEdge>> local_results(num_threads);
-        for (auto& v : local_results) {
-            v.assign(n, {NO_EDGE, {}, false});
-        }
+    // Persistent worker state. Threads are created once and reused for every
+    // Boruvka phase, avoiding repeated fork/join overhead.
+    std::vector<int> component_roots(n);
+    std::vector<std::vector<CheapestEdge>> local_results(num_threads);
+    for (auto& v : local_results) {
+        v.assign(n, empty_cheapest_edge());
+    }
 
-        // split the outer i-loop across threads. static block partitioning
-        // by i is fine; the inner j-loop length is n-i, so threads with
-        // smaller i do more work, but the imbalance is at most 2x.
-        std::vector<std::thread> threads;
-        threads.reserve(num_threads);
-        for (int t = 0; t < num_threads; ++t) {
-            int i_start = (n * t) / num_threads;
-            int i_end   = (n * (t + 1)) / num_threads;
-            threads.emplace_back(scan_worker, i_start, i_end, n,
-                                 std::cref(points), std::ref(uf),
-                                 std::ref(local_results[t]));
+    std::mutex phase_mutex;
+    std::condition_variable phase_start;
+    std::condition_variable phase_done;
+    int phase_id = 0;
+    int finished_workers = 0;
+    bool stop_workers = false;
+
+    auto worker_loop = [&](int t) {
+        const int i_start = (n * t) / num_threads;
+        const int i_end = (n * (t + 1)) / num_threads;
+        int seen_phase = 0;
+
+        while (true) {
+            {
+                std::unique_lock<std::mutex> lock(phase_mutex);
+                phase_start.wait(lock, [&] {
+                    return stop_workers || phase_id > seen_phase;
+                });
+                if (stop_workers) return;
+                seen_phase = phase_id;
+            }
+
+            std::fill(local_results[t].begin(), local_results[t].end(),
+                      empty_cheapest_edge());
+            scan_range(i_start, i_end, n, points, component_roots,
+                       local_results[t]);
+
+            {
+                std::lock_guard<std::mutex> lock(phase_mutex);
+                ++finished_workers;
+            }
+            phase_done.notify_one();
         }
-        for (auto& th : threads) th.join();
+    };
+
+    std::vector<std::thread> workers;
+    workers.reserve(num_threads);
+    for (int t = 0; t < num_threads; ++t) {
+        workers.emplace_back(worker_loop, t);
+    }
+
+    while (uf.num_components() > 1) {
+        {
+            std::lock_guard<std::mutex> lock(phase_mutex);
+            for (int i = 0; i < n; ++i) {
+                component_roots[i] = uf.find(i);
+            }
+            finished_workers = 0;
+            ++phase_id;
+        }
+        phase_start.notify_all();
+
+        {
+            std::unique_lock<std::mutex> lock(phase_mutex);
+            phase_done.wait(lock, [&] {
+                return finished_workers == num_threads;
+            });
+        }
 
         // merge per-thread results: for each vertex v, take the best edge
         // found across all threads
@@ -116,6 +169,15 @@ std::vector<MSTEdge> boruvka_mst_parallel(const std::vector<Point>& points,
                 mst.push_back(e);
             }
         }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(phase_mutex);
+        stop_workers = true;
+    }
+    phase_start.notify_all();
+    for (auto& worker : workers) {
+        worker.join();
     }
 
     return mst;
