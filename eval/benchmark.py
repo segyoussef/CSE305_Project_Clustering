@@ -43,6 +43,7 @@ DEFAULT_DATASETS = [
     "donut3",
     "complex9",
     "diamond9",
+    "optdigits", # high-dimensional real data (N=5620, d=64)
 ]
 
 DEFAULT_THREADS = [1, 2, 3, 4, 8, 12, 16]
@@ -66,6 +67,8 @@ def is_mst_executable(executable):
 def dataset_source(dataset_name):
     if dataset_name in {"donut3", "complex9", "diamond9"}:
         return "milaan9 structured dataset"
+    if dataset_name == "optdigits":
+        return "UCI Optical Recognition of Handwritten Digits"
     if dataset_name.startswith("random_n"):
         return "synthetic random 2D dataset"
     return "unknown"
