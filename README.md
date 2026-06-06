@@ -26,8 +26,8 @@ From the repository root:
 ```bash
 mkdir -p build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . -j
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
+make -j4
 cd ..
 ```
 
